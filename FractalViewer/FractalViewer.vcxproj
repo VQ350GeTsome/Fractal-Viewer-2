@@ -125,6 +125,7 @@
   <ItemGroup>
     <ClInclude Include="ComplexNumber.h" />
     <ClInclude Include="Fractal.h" />
+    <ClInclude Include="Point.h" />
     <ClInclude Include="Window.h" />
     <ClInclude Include="framework.h" />
     <ClInclude Include="Resource.h" />
