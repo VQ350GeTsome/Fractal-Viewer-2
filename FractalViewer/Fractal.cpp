@@ -2,13 +2,20 @@
 
 COLORREF Fractal::computePixel(int x, int y) {
 
-	ComplexNumber z = ComplexNumber(0.0, 0.0);
-	ComplexNumber c = getComplexFromXY(x, y);
+	ComplexNumber z, c;
+
+	if (halfW > x) {
+		z = ComplexNumber(0.0, 0.0);
+		c = getComplexFromXY(x, y);
+	} else {
+		z = getComplexFromXY(x, y);
+		c = juliaC;
+	}
 
 	int escape = iterate(z, c);
 
 	// Map escape value to a gradient later.
-	int color = escape;
+	int color = escape * 5;
 
 	return COLORREF(RGB(color % 256, color % 256, color % 256));
 }
@@ -24,27 +31,35 @@ int Fractal::iterate(ComplexNumber z, ComplexNumber c) {
 
 ComplexNumber Fractal::getComplexFromXY(int x, int y) {
 
-	double aspectRatio = (double) h / w;
+	bool leftSide = (x < halfW);
+	
+	double nx = leftSide ? (double) x / halfW : (double) (x - halfW) / halfW;
 
-	double viewWidth = 3.0 / zoom; // base width of view, scaled by zoom
-	double viewHeight = viewWidth * aspectRatio;
+	double ny = (double)y / h;
+
+	ComplexNumber center = leftSide ? centerMandel : centerJulia;
+
+	double viewWidth = 3.0 / zoom;
+	double viewHeight = viewWidth * aspectRatio * 2;
 
 	double realMin = center.real() - viewWidth / 2;
 	double realMax = center.real() + viewWidth / 2;
 	double imagMin = center.imag() - viewHeight / 2;
 	double imagMax = center.imag() + viewHeight / 2;
 
-	double real = realMin + (x / (double) w) * (realMax - realMin);
-	double imag = imagMax - (y / (double) h) * (imagMax - imagMin); // flip Y-axis
+	double real = realMin + nx * (realMax - realMin);
+	double imag = imagMax - ny * (imagMax - imagMin);
 
 	return ComplexNumber(real, imag);
 }
 
-Point Fractal::getXYFromComplex(ComplexNumber c) {
-	double aspectRatio = (double) h / w;
+
+Point Fractal::getXYFromComplex(ComplexNumber c, bool mandelSide) {
 
 	double viewWidth = 3.0 / zoom;
 	double viewHeight = viewWidth * aspectRatio;
+
+	ComplexNumber center = mandelSide ? centerMandel : centerJulia;
 
 	double realMin = center.real() - viewWidth / 2;
 	double realMax = center.real() + viewWidth / 2;

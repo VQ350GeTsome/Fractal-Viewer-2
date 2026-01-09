@@ -24,7 +24,7 @@ public:
 	// Other methods
 	double magnitude() const;
 	double magnitudeSquared() const;
-	ComplexNumber conjugate() const;	
+	ComplexNumber conjugate() const;
 	ComplexNumber pow(double exponent) const;
 
 private:

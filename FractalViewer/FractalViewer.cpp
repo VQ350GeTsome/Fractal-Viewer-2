@@ -10,13 +10,13 @@
 #define MAX_LOADSTRING 100
 
 // Global Variables:
-int width = 1000, height = 1000;
+int width = 2000, height = 1000;
 
 HINSTANCE hInst;                                // current instance
 WCHAR szTitle[MAX_LOADSTRING];                  // The title bar text
 WCHAR szWindowClass[MAX_LOADSTRING];            // the main window class name
 
-Fractal* fractal = new Fractal(width, height, [](ComplexNumber z, ComplexNumber c) { return z*z + c; });
+Fractal* fractal = new Fractal(width, height, [](ComplexNumber z, ComplexNumber c) { return z*z + c; });	// Mandelbrot set
 HBITMAP hFractalBmp = NULL;
 
 // Forward declarations of functions included in this code module:
