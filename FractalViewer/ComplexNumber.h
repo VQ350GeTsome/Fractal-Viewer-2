@@ -1,33 +1,42 @@
 #pragma once
-#include <utility>
+
+#include "Point.h"
+
+#include <cmath>
 
 class ComplexNumber {
 
 public:
 
+	double re, im;
+
 	ComplexNumber(double real = 0.0, double imag = 0.0);
 
-	// Component Getters
-	double real() const;
-	double imag() const;
-
 	// Operator overloads
-	ComplexNumber operator+(const ComplexNumber& other) const;
-	ComplexNumber operator-(const ComplexNumber& other) const;
-	ComplexNumber operator*(const ComplexNumber& other) const;
-	ComplexNumber operator/(const ComplexNumber& other) const;
+	ComplexNumber inline operator+(const ComplexNumber& other) const {
+		return ComplexNumber(re + other.re, im + other.im);
+	}
+	ComplexNumber inline operator-(const ComplexNumber& other) const {
+		return ComplexNumber(re - other.re, im - other.im);
+	}
+	ComplexNumber inline operator*(const ComplexNumber& other) const {
+		return ComplexNumber(re * other.re - im * other.im, re * other.im + im * other.re);
+	}
+	ComplexNumber inline operator/(const ComplexNumber& other) const {
+		double denom = other.re * other.re + other.im * other.im;
+		return ComplexNumber((re * other.re + im * other.im) / denom,
+							 (im * other.re - re * other.im) / denom);
+	}
 
 	// Polar coordinate conversions
-	std::pair<double, double> toPolar() const;
+	Point toPolar() const;
 	ComplexNumber fromPolar(double r, double theta) const;
 
 	// Other methods
-	double magnitude() const;
-	double magnitudeSquared() const;
-	ComplexNumber conjugate() const;
-	ComplexNumber pow(double exponent) const;
+	double inline magnitude() const { return std::sqrt(re * re + im * im); }
+	double inline magnitudeSquared() const { return re*re + im*im; }
 
-private:
-	double re, im;
+	ComplexNumber inline conjugate() const { return ComplexNumber(re, -im); }
+	ComplexNumber pow(double exponent) const;
 };
 

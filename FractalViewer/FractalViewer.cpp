@@ -3,6 +3,9 @@
 
 #include "framework.h"
 #include "Window.h"
+#include <windowsx.h> // For GET_X_LPARAM & GET_Y_LPARAM 
+
+#include <omp.h>	// For parallel processing
 
 #include "Fractal.h"
 #include "ComplexNumber.h"
@@ -18,6 +21,7 @@ WCHAR szWindowClass[MAX_LOADSTRING];            // the main window class name
 
 Fractal* fractal = new Fractal(width, height, [](ComplexNumber z, ComplexNumber c) { return z*z + c; });	// Mandelbrot set
 HBITMAP hFractalBmp = NULL;
+uint32_t* pixels = nullptr;
 
 // Forward declarations of functions included in this code module:
 void				refreshFractal(HWND);
@@ -133,12 +137,32 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
 	switch (message) {
 
 		case WM_CREATE: {
-			HDC hdc = GetDC(hWnd);
-			hFractalBmp = CreateCompatibleBitmap(hdc, width, height);
-			ReleaseDC(hWnd, hdc);
+
+			BITMAPINFO bmi = {};
+			bmi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
+			bmi.bmiHeader.biWidth = width;
+			bmi.bmiHeader.biHeight = -height;   // top-down
+			bmi.bmiHeader.biPlanes = 1;
+			bmi.bmiHeader.biBitCount = 32;      // BGRA
+			bmi.bmiHeader.biCompression = BI_RGB;
+
+			void* pixelBuffer = nullptr;
+
+			hFractalBmp = CreateDIBSection(
+				nullptr,
+				&bmi,
+				DIB_RGB_COLORS,
+				&pixelBuffer,
+				nullptr,
+				0
+			);
+
+			pixels = static_cast<uint32_t*>(pixelBuffer);
+
 			refreshFractal(hWnd);
+			return 0;
 		}
-					  break;
+		break;
 
 		case WM_COMMAND: {
 			int wmId = LOWORD(wParam);
@@ -154,7 +178,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
 					return DefWindowProc(hWnd, message, wParam, lParam);
 			}
 		}
-					   break;
+		break;
 
 		case WM_PAINT: {
 			PAINTSTRUCT ps;
@@ -162,12 +186,14 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
 
 			HDC memDC = CreateCompatibleDC(hdc);
 			SelectObject(memDC, hFractalBmp);
+
 			BitBlt(hdc, 0, 0, width, height, memDC, 0, 0, SRCCOPY);
 
 			DeleteDC(memDC);
 			EndPaint(hWnd, &ps);
+			return 0;
 		}
-					 break;
+		break;
 
 		case WM_KEYDOWN: {
 
@@ -177,8 +203,25 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
 				}
 			}
 		}
-					   break;
+		break;
 
+		case WM_MBUTTONDOWN: {
+			fractal->setNewCenter(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
+			refreshFractal(hWnd);
+		}
+
+		case WM_MOUSEWHEEL: {
+			double zoomDelta = GET_WHEEL_DELTA_WPARAM(wParam);
+			int x = GET_X_LPARAM(lParam), y = GET_Y_LPARAM(lParam);
+
+			double notches = zoomDelta / WHEEL_DELTA,
+				zoomPercent = 0.01, // Percent per notch
+				zoomFactor = 1.0 + (notches * zoomPercent);
+
+			fractal->zoomInOut(x, y, zoomFactor);
+			refreshFractal(hWnd);
+		}
+		break;
 
 		case WM_DESTROY:
 			PostQuitMessage(0);
@@ -212,9 +255,11 @@ void refreshFractal(HWND hWnd) {
 	HDC memDC = CreateCompatibleDC(hdc);
 	SelectObject(memDC, hFractalBmp);
 
-	for (int x = 0; x < width; x++) for (int y = 0; y < height; y++) {
-		COLORREF color = fractal->computePixel(x, y);
-		SetPixel(memDC, x, y, color);
+	#pragma omp parallel for schedule(dynamic)
+	for (int x = 0; x < width; x++) {
+		for (int y = 0; y < height; y++) {
+			pixels[y * width + x] = fractal->computePixel(x, y);
+		}
 	}
 
 	DeleteDC(memDC); ReleaseDC(hWnd, hdc);

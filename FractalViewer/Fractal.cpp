@@ -1,6 +1,6 @@
 #include "Fractal.h"
 
-COLORREF Fractal::computePixel(int x, int y) {
+uint32_t Fractal::computePixel(int x, int y) {
 
 	ComplexNumber z, c;
 
@@ -15,9 +15,9 @@ COLORREF Fractal::computePixel(int x, int y) {
 	int escape = iterate(z, c);
 
 	// Map escape value to a gradient later.
-	int color = escape * 5;
+	int color = (escape == maxIterations) ? 0 : (escape * 5) % 255;
 
-	return COLORREF(RGB(color % 256, color % 256, color % 256));
+	return color | (color << 8) | (color << 16);
 }
 
 int Fractal::iterate(ComplexNumber z, ComplexNumber c) {
@@ -38,14 +38,15 @@ ComplexNumber Fractal::getComplexFromXY(int x, int y) {
 	double ny = (double)y / h;
 
 	ComplexNumber center = leftSide ? centerMandel : centerJulia;
+	double zoom = leftSide ? zoomM : zoomJ;
 
 	double viewWidth = 3.0 / zoom;
 	double viewHeight = viewWidth * aspectRatio * 2;
 
-	double realMin = center.real() - viewWidth / 2;
-	double realMax = center.real() + viewWidth / 2;
-	double imagMin = center.imag() - viewHeight / 2;
-	double imagMax = center.imag() + viewHeight / 2;
+	double realMin = center.re - viewWidth / 2;
+	double realMax = center.re + viewWidth / 2;
+	double imagMin = center.im - viewHeight / 2;
+	double imagMax = center.im + viewHeight / 2;
 
 	double real = realMin + nx * (realMax - realMin);
 	double imag = imagMax - ny * (imagMax - imagMin);
@@ -56,18 +57,23 @@ ComplexNumber Fractal::getComplexFromXY(int x, int y) {
 
 Point Fractal::getXYFromComplex(ComplexNumber c, bool mandelSide) {
 
-	double viewWidth = 3.0 / zoom;
-	double viewHeight = viewWidth * aspectRatio;
-
 	ComplexNumber center = mandelSide ? centerMandel : centerJulia;
+	double zoom = mandelSide ? zoomM : zoomJ;
 
-	double realMin = center.real() - viewWidth / 2;
-	double realMax = center.real() + viewWidth / 2;
-	double imagMin = center.imag() - viewHeight / 2;
-	double imagMax = center.imag() + viewHeight / 2;
+	double viewWidth = 3.0 / zoom;
+	double viewHeight = viewWidth * aspectRatio * 2; 
 
-	double x = ((c.real() - realMin) / (realMax - realMin)) * w;
-	double y = ((imagMax - c.imag()) / (imagMax - imagMin)) * h;
+	double realMin = center.re - viewWidth / 2;
+	double realMax = center.re + viewWidth / 2;
+	double imagMin = center.im - viewHeight / 2;
+	double imagMax = center.im + viewHeight / 2;
 
-	return Point((int) x, (int) y);
+	double nx = (c.re - realMin) / (realMax - realMin);
+	double ny = (imagMax - c.im) / (imagMax - imagMin);
+
+	int x = mandelSide ? (int) (nx * halfW) : (int) (nx * halfW + halfW), 
+		y = (int)(ny * h);
+
+	return Point(x, y);
 }
+
