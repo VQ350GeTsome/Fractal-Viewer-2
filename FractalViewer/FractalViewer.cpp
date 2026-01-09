@@ -25,6 +25,7 @@ int* iterations = nullptr;
 uint32_t* pixels = nullptr;
 
 // Forward declarations of functions included in this code module:
+void 				refreshJulia(HWND);
 void				invalidateFractal(HWND);
 void				refreshGradient(HWND);
 void				updateFractal(HWND);
@@ -209,10 +210,18 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
 		}
 		break;
 
+		case WM_LBUTTONDOWN: {
+			fractal->setNewJuliaC(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
+			refreshJulia(hWnd);
+			refreshGradient(hWnd);
+		}	
+		break;
+
 		case WM_MBUTTONDOWN: {
 			fractal->setNewCenter(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
 			invalidateFractal(hWnd);
 		}
+		break;
 
 		case WM_MOUSEWHEEL: {
 			double zoomDelta = GET_WHEEL_DELTA_WPARAM(wParam);
@@ -254,16 +263,37 @@ INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam) {
 	return (INT_PTR)FALSE;
 }
 
-void refreshFractal(HWND hWnd) {
+void refreshMandelbrot(HWND hWnd) {
 
 	#pragma omp parallel for schedule(dynamic)
 	for (int y = 0; y < height; y++) {
 		for (int x = 0; x < width; x++) {
-			iterations[y * width + x] = fractal->computePixel(x, y);
+			if (x < width / 2) {
+				iterations[y * width + x] = fractal->computePixel(x, y);
+			}
 		}
 	}
 
 	InvalidateRect(hWnd, NULL, FALSE);
+}
+
+void refreshJulia(HWND hWnd) {
+
+	#pragma omp parallel for schedule(dynamic)
+	for (int y = 0; y < height; y++) {
+		for (int x = 0; x < width; x++) {
+			if (x >= width / 2) {
+				iterations[y * width + x] = fractal->computePixel(x, y);
+			}
+		}
+	}
+
+	InvalidateRect(hWnd, NULL, FALSE);
+}
+
+void refreshBoth(HWND hWnd) {
+	refreshMandelbrot(hWnd);
+	refreshJulia(hWnd);
 }
 
 void refreshGradient(HWND hWnd) {
@@ -280,6 +310,6 @@ void refreshGradient(HWND hWnd) {
 }
 
 void invalidateFractal(HWND hWnd) {
-	refreshFractal(hWnd);
+	refreshBoth(hWnd);
 	refreshGradient(hWnd);
 }

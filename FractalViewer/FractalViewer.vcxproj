@@ -126,6 +126,7 @@
   <ItemGroup>
     <ClInclude Include="ComplexNumber.h" />
     <ClInclude Include="Fractal.h" />
+    <ClInclude Include="Gradient.h" />
     <ClInclude Include="Point.h" />
     <ClInclude Include="Window.h" />
     <ClInclude Include="framework.h" />
@@ -136,6 +137,7 @@
     <ClCompile Include="ComplexNumber.cpp" />
     <ClCompile Include="Fractal.cpp" />
     <ClCompile Include="FractalViewer.cpp" />
+    <ClCompile Include="Gradient.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="Window.rc" />

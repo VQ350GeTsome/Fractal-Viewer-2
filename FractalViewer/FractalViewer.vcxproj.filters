@@ -36,6 +36,9 @@
     <ClInclude Include="Point.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="Gradient.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="FractalViewer.cpp">
@@ -45,6 +48,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="ComplexNumber.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Gradient.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

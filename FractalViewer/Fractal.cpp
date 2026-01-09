@@ -24,15 +24,6 @@ int Fractal::iterate(ComplexNumber z, ComplexNumber c) {
 	return iterations;
 }
 
-uint32_t Fractal::applyGradient(int iterations) {
-	if (iterations == maxIterations) return 0xFF000000; // Black for points inside the set.
-	// Simple gradient from blue to red.
-	uint8_t r = (iterations * 9) % 256;
-	uint8_t g = 0;
-	uint8_t b = (255 - (iterations * 9)) % 256;
-	return (0xFF << 24) | (r << 16) | (g << 8) | b;
-}
-
 ComplexNumber Fractal::getComplexFromXY(int x, int y) {
 
 	bool leftSide = (x < halfW);
