@@ -21,10 +21,14 @@ WCHAR szWindowClass[MAX_LOADSTRING];            // the main window class name
 
 Fractal* fractal = new Fractal(width, height, [](ComplexNumber z, ComplexNumber c) { return z*z + c; });	// Mandelbrot set
 HBITMAP hFractalBmp = NULL;
+int* iterations = nullptr;
 uint32_t* pixels = nullptr;
 
 // Forward declarations of functions included in this code module:
-void				refreshFractal(HWND);
+void				invalidateFractal(HWND);
+void				refreshGradient(HWND);
+void				updateFractal(HWND);
+
 ATOM                MyRegisterClass(HINSTANCE hInstance);
 BOOL                InitInstance(HINSTANCE, int);
 LRESULT CALLBACK    WndProc(HWND, UINT, WPARAM, LPARAM);
@@ -64,8 +68,6 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 
 	return (int)msg.wParam;
 }
-
-
 
 //
 //  FUNCTION: MyRegisterClass()
@@ -158,8 +160,10 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
 			);
 
 			pixels = static_cast<uint32_t*>(pixelBuffer);
+			iterations = new int[width * height];
 
-			refreshFractal(hWnd);
+			invalidateFractal(hWnd);
+			refreshGradient(hWnd);
 			return 0;
 		}
 		break;
@@ -172,7 +176,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
 					DialogBox(hInst, MAKEINTRESOURCE(IDD_ABOUTBOX), hWnd, About);
 					break;
 				case IDM_REFRESH:
-					refreshFractal(hWnd);
+					invalidateFractal(hWnd);
 					break;
 				default:
 					return DefWindowProc(hWnd, message, wParam, lParam);
@@ -199,7 +203,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
 
 			switch (wParam) {
 				case 'R': {
-					refreshFractal(hWnd);
+					invalidateFractal(hWnd);
 				}
 			}
 		}
@@ -207,19 +211,20 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
 
 		case WM_MBUTTONDOWN: {
 			fractal->setNewCenter(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
-			refreshFractal(hWnd);
+			invalidateFractal(hWnd);
 		}
 
 		case WM_MOUSEWHEEL: {
 			double zoomDelta = GET_WHEEL_DELTA_WPARAM(wParam);
-			int x = GET_X_LPARAM(lParam), y = GET_Y_LPARAM(lParam);
+
+			POINT pt = { GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) }; ScreenToClient(hWnd, &pt);
 
 			double notches = zoomDelta / WHEEL_DELTA,
-				zoomPercent = 0.01, // Percent per notch
+				zoomPercent = 0.25, // Percent per notch
 				zoomFactor = 1.0 + (notches * zoomPercent);
 
-			fractal->zoomInOut(x, y, zoomFactor);
-			refreshFractal(hWnd);
+			fractal->zoomInOut(pt.x, pt.y, zoomFactor);
+			invalidateFractal(hWnd);
 		}
 		break;
 
@@ -250,19 +255,31 @@ INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam) {
 }
 
 void refreshFractal(HWND hWnd) {
-	HDC hdc = GetDC(hWnd);
 
-	HDC memDC = CreateCompatibleDC(hdc);
-	SelectObject(memDC, hFractalBmp);
+	#pragma omp parallel for schedule(dynamic)
+	for (int y = 0; y < height; y++) {
+		for (int x = 0; x < width; x++) {
+			iterations[y * width + x] = fractal->computePixel(x, y);
+		}
+	}
+
+	InvalidateRect(hWnd, NULL, FALSE);
+}
+
+void refreshGradient(HWND hWnd) {
 
 	#pragma omp parallel for schedule(dynamic)
 	for (int x = 0; x < width; x++) {
 		for (int y = 0; y < height; y++) {
-			pixels[y * width + x] = fractal->computePixel(x, y);
+			pixels[y * width + x] = fractal->applyGradient(iterations[y * width + x]);
 		}
 	}
 
-	DeleteDC(memDC); ReleaseDC(hWnd, hdc);
-
 	InvalidateRect(hWnd, NULL, FALSE);
+
+}
+
+void invalidateFractal(HWND hWnd) {
+	refreshFractal(hWnd);
+	refreshGradient(hWnd);
 }

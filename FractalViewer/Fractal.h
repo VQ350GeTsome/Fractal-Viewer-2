@@ -14,7 +14,7 @@ public:
 		setNewDimensions(width, height);
 	}
 
-	uint32_t computePixel(int x, int y);
+	int computePixel(int x, int y);
 
 	void setNewDimensions(int width, int height) {
 		w = width; h = height;
@@ -22,16 +22,23 @@ public:
 		aspectRatio = (double) h / w;
 	}
 
-	void zoomInOut(int x, int y, double delta) { 
-
+	void inline zoomInOut(int x, int y, double delta) {
 		if (delta == 1) return;
 
 		if (x < halfW) {
-			//centerMandel = getComplexFromXY(x, y);
+			ComplexNumber before = getComplexFromXY(x, y);
 			zoomM *= delta;
-		} else {
-			//centerJulia = getComplexFromXY(x, y);
+			ComplexNumber after = getComplexFromXY(x, y);
+
+			centerMandel += (before - after);
+		}
+		else {
+
+			ComplexNumber before = getComplexFromXY(x, y);
 			zoomJ *= delta;
+			ComplexNumber after = getComplexFromXY(x, y);
+
+			centerJulia += (before - after);
 		}
 	}
 
@@ -39,6 +46,8 @@ public:
 		if (x < halfW) centerMandel = getComplexFromXY(x, y);
 		else centerJulia = getComplexFromXY(x, y);
 	}
+
+	uint32_t applyGradient(int iterations);
 
 	ComplexNumber getComplexFromXY(int x, int y);
 	Point getXYFromComplex(ComplexNumber cl, bool mandelSide);
