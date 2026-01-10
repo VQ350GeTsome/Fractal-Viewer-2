@@ -97,7 +97,7 @@ private:
 	double aspectRatio;
 
 	int maxIterations = 256;
-	double zoomM = 1.0, zoomJ = 1.0;
+	double zoomM = 0.9, zoomJ = 0.9;
 
 	uint32_t insideColor = 0x000000;
 

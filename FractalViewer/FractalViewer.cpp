@@ -13,7 +13,7 @@
 #define MAX_LOADSTRING 100
 
 // Global Variables:
-int width = 2000, height = 1000;
+int width = 1000, height = width / 2;
 
 HINSTANCE hInst;                                // current instance
 WCHAR szTitle[MAX_LOADSTRING];                  // The title bar text
@@ -24,6 +24,8 @@ HBITMAP hFractalBmp = NULL;
 int* iterations = nullptr;
 uint32_t* pixels = nullptr;
 
+int clientWidth = width, clientHeight = height;
+
 // Forward declarations of functions included in this code module:
 inline void 		refreshJulia(HWND);
 inline void 		refreshMandelbrot(HWND);
@@ -31,6 +33,9 @@ inline void			refreshGradient(HWND);
 
 inline void 		refreshScreen(HWND);
 inline void			refreshFractal(HWND, int);
+
+inline POINT		scaleMouse(HWND, LPARAM);
+inline POINT        scaleMouse(int, int);
 
 ATOM                MyRegisterClass(HINSTANCE hInstance);
 BOOL                InitInstance(HINSTANCE, int);
@@ -110,15 +115,19 @@ ATOM MyRegisterClass(HINSTANCE hInstance) {
 BOOL InitInstance(HINSTANCE hInstance, int nCmdShow) {
 	hInst = hInstance; // Store instance handle in our global variable
 
-	HWND hWnd = CreateWindowW
-	(
-		szWindowClass, 
-		szTitle, 
+	RECT rect = { 0, 0, width, height };
+	AdjustWindowRect(&rect, WS_OVERLAPPEDWINDOW, TRUE);
+
+	HWND hWnd = CreateWindowW(
+		szWindowClass,
+		szTitle,
 		WS_OVERLAPPEDWINDOW,
-		CW_USEDEFAULT, CW_USEDEFAULT, 
-		width, height, 
+		CW_USEDEFAULT, CW_USEDEFAULT,
+		rect.right - rect.left,
+		rect.bottom - rect.top,
 		nullptr, nullptr, hInstance, nullptr
 	);
+
 
 	if (!hWnd) return FALSE;
 
@@ -141,6 +150,15 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow) {
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) {
 	switch (message) {
 
+		// Handle window resizing
+		case WM_SIZE: {
+			clientWidth = LOWORD(lParam);
+			clientHeight = HIWORD(lParam);
+			InvalidateRect(hWnd, nullptr, FALSE);
+			return 0;
+		}
+
+		// Create bitmap and pixel buffer when the window is created
 		case WM_CREATE: {
 
 			BITMAPINFO bmi = {};
@@ -171,6 +189,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
 		}
 		break;
 
+		// Menu bar commands
 		case WM_COMMAND: {
 			int wmId = LOWORD(wParam);
 			// Parse the menu selections:
@@ -187,6 +206,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
 		}
 		break;
 
+		// When painting is needed
 		case WM_PAINT: {
 			PAINTSTRUCT ps;
 			HDC hdc = BeginPaint(hWnd, &ps);
@@ -194,7 +214,16 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
 			HDC memDC = CreateCompatibleDC(hdc);
 			SelectObject(memDC, hFractalBmp);
 
-			BitBlt(hdc, 0, 0, width, height, memDC, 0, 0, SRCCOPY);
+			SetStretchBltMode(hdc, COLORONCOLOR); // important for crisp pixels
+
+			StretchBlt(
+				hdc,
+				0, 0, clientWidth, clientHeight,   // destination (window size)
+				memDC,
+				0, 0, width, height,               // source (fixed buffer)
+				SRCCOPY
+			);
+
 
 			DeleteDC(memDC);
 			EndPaint(hWnd, &ps);
@@ -217,7 +246,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
 
 		// Left mouse button sets new Julia C
 		case WM_LBUTTONDOWN: {
-			fractal->setNewJuliaC(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
+			POINT pt = scaleMouse(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
+			fractal->setNewJuliaC(pt.x, pt.y);
 			refreshJulia(hWnd);
 			refreshGradient(hWnd);
 		}	
@@ -225,7 +255,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
 
 		case WM_MOUSEMOVE: {
 			if (wParam & MK_LBUTTON) {
-				fractal->setNewJuliaC(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
+				POINT pt = scaleMouse(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
+				fractal->setNewJuliaC(pt.x, pt.y);
 				refreshJulia(hWnd);
 				refreshGradient(hWnd);
 			}
@@ -234,9 +265,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
 
 		// Middle mouse button sets new center
 		case WM_MBUTTONDOWN: {
-			int x = GET_X_LPARAM(lParam);
-			fractal->setNewCenter(x, GET_Y_LPARAM(lParam));
-			refreshFractal(hWnd, x);
+			POINT pt = scaleMouse(hWnd, lParam);
+			fractal->setNewCenter(pt.x, pt.y);
+			refreshFractal(hWnd, pt.x);
 		}
 		break;
 
@@ -256,7 +287,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
 			else {
 				double zoomPercent = 0.334, // Percent per notch
 					zoomFactor = 1.0 + (notches * zoomPercent);
-				POINT pt = { GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) }; ScreenToClient(hWnd, &pt);
+				POINT pt = scaleMouse(hWnd, lParam);
 				fractal->zoomInOut(pt.x, pt.y, zoomFactor);
 				refreshFractal(hWnd, pt.x);
 			}
@@ -346,3 +377,27 @@ inline void refreshScreen(HWND hWnd) {
 	refreshBoth(hWnd);
 	refreshGradient(hWnd);
 }
+
+// Scale mouse coordinates from client size to fractal size
+inline POINT scaleMouse(HWND hWnd, LPARAM lParam) {
+	POINT p;
+
+	p.x = GET_X_LPARAM(lParam);
+	p.y = GET_Y_LPARAM(lParam);
+
+	ScreenToClient(hWnd, &p);
+
+	p.x = p.x * width / clientWidth;
+	p.y = p.y * height / clientHeight;
+
+	return p;
+}
+inline POINT scaleMouse(int x, int y) {
+	POINT p;
+
+	p.x = x * width / clientWidth;
+	p.y = y * height / clientHeight;
+
+	return p;
+}
+
