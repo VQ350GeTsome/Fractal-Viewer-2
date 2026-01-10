@@ -47,7 +47,7 @@ public:
         delete[] palette;
     }
 
-    uint32_t inline getColor(int iterations) const {
+    inline uint32_t getColor(int iterations) const {
         if (iterations == insideIterations) {
             return insideColor;
 		}
@@ -60,6 +60,14 @@ public:
     }
 
     void updatePalette();
+
+    inline void changeGradientSize(int delta) {
+        gradientSize += delta;
+        if (gradientSize < 2) gradientSize = 2;
+        delete[] palette;
+        palette = new uint32_t[gradientSize];
+        updatePalette();
+	}
 
 private:
     int gradientSize = 32;

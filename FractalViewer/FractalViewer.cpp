@@ -25,10 +25,12 @@ int* iterations = nullptr;
 uint32_t* pixels = nullptr;
 
 // Forward declarations of functions included in this code module:
-void 				refreshJulia(HWND);
-void				invalidateFractal(HWND);
-void				refreshGradient(HWND);
-void				updateFractal(HWND);
+inline void 		refreshJulia(HWND);
+inline void 		refreshMandelbrot(HWND);
+inline void			refreshGradient(HWND);
+
+inline void 		refreshScreen(HWND);
+inline void			refreshFractal(HWND, int);
 
 ATOM                MyRegisterClass(HINSTANCE hInstance);
 BOOL                InitInstance(HINSTANCE, int);
@@ -163,7 +165,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
 			pixels = static_cast<uint32_t*>(pixelBuffer);
 			iterations = new int[width * height];
 
-			invalidateFractal(hWnd);
+			refreshScreen(hWnd);
 			refreshGradient(hWnd);
 			return 0;
 		}
@@ -177,7 +179,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
 					DialogBox(hInst, MAKEINTRESOURCE(IDD_ABOUTBOX), hWnd, About);
 					break;
 				case IDM_REFRESH:
-					invalidateFractal(hWnd);
+					refreshScreen(hWnd);
 					break;
 				default:
 					return DefWindowProc(hWnd, message, wParam, lParam);
@@ -200,16 +202,20 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
 		}
 		break;
 
+		// Key presses
 		case WM_KEYDOWN: {
 
 			switch (wParam) {
+
+				// R refreshes the fractal
 				case 'R': {
-					invalidateFractal(hWnd);
+					refreshScreen(hWnd);
 				}
 			}
 		}
 		break;
 
+		// Left mouse button sets new Julia C
 		case WM_LBUTTONDOWN: {
 			fractal->setNewJuliaC(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
 			refreshJulia(hWnd);
@@ -217,23 +223,43 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
 		}	
 		break;
 
-		case WM_MBUTTONDOWN: {
-			fractal->setNewCenter(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
-			invalidateFractal(hWnd);
+		case WM_MOUSEMOVE: {
+			if (wParam & MK_LBUTTON) {
+				fractal->setNewJuliaC(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
+				refreshJulia(hWnd);
+				refreshGradient(hWnd);
+			}
 		}
 		break;
 
+		// Middle mouse button sets new center
+		case WM_MBUTTONDOWN: {
+			int x = GET_X_LPARAM(lParam);
+			fractal->setNewCenter(x, GET_Y_LPARAM(lParam));
+			refreshFractal(hWnd, x);
+		}
+		break;
+
+		// If Shift + scroll, change gradient size
+		// Else zoom in/out
 		case WM_MOUSEWHEEL: {
-			double zoomDelta = GET_WHEEL_DELTA_WPARAM(wParam);
+			double wDelta = GET_WHEEL_DELTA_WPARAM(wParam),
+				   notches = wDelta / WHEEL_DELTA;
 
-			POINT pt = { GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) }; ScreenToClient(hWnd, &pt);
-
-			double notches = zoomDelta / WHEEL_DELTA,
-				zoomPercent = 0.25, // Percent per notch
-				zoomFactor = 1.0 + (notches * zoomPercent);
-
-			fractal->zoomInOut(pt.x, pt.y, zoomFactor);
-			invalidateFractal(hWnd);
+			// If shift is held, change gradient size
+			if (wParam & MK_SHIFT) {
+				fractal->changeGradientSize(notches);
+				refreshGradient(hWnd);
+				return 0;
+			}
+			// Else zoom in/out
+			else {
+				double zoomPercent = 0.334, // Percent per notch
+					zoomFactor = 1.0 + (notches * zoomPercent);
+				POINT pt = { GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) }; ScreenToClient(hWnd, &pt);
+				fractal->zoomInOut(pt.x, pt.y, zoomFactor);
+				refreshFractal(hWnd, pt.x);
+			}
 		}
 		break;
 
@@ -263,7 +289,8 @@ INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam) {
 	return (INT_PTR)FALSE;
 }
 
-void refreshMandelbrot(HWND hWnd) {
+// Refresh only the Mandelbrot side
+inline void refreshMandelbrot(HWND hWnd) {
 
 	#pragma omp parallel for schedule(dynamic)
 	for (int y = 0; y < height; y++) {
@@ -276,8 +303,8 @@ void refreshMandelbrot(HWND hWnd) {
 
 	InvalidateRect(hWnd, NULL, FALSE);
 }
-
-void refreshJulia(HWND hWnd) {
+// Refresh only the Julia side
+inline void refreshJulia(HWND hWnd) {
 
 	#pragma omp parallel for schedule(dynamic)
 	for (int y = 0; y < height; y++) {
@@ -290,13 +317,19 @@ void refreshJulia(HWND hWnd) {
 
 	InvalidateRect(hWnd, NULL, FALSE);
 }
-
-void refreshBoth(HWND hWnd) {
+// Refresh both sides
+inline void refreshBoth(HWND hWnd) {
 	refreshMandelbrot(hWnd);
 	refreshJulia(hWnd);
 }
-
-void refreshGradient(HWND hWnd) {
+// Refresh one side based on x position
+inline void refreshFractal(HWND hWnd, int x) {
+	if (width / 2 > x) refreshMandelbrot(hWnd);
+	else refreshJulia(hWnd);
+	refreshGradient(hWnd);
+}
+// Refresh the gradient colors
+inline void refreshGradient(HWND hWnd) {
 
 	#pragma omp parallel for schedule(dynamic)
 	for (int x = 0; x < width; x++) {
@@ -308,8 +341,8 @@ void refreshGradient(HWND hWnd) {
 	InvalidateRect(hWnd, NULL, FALSE);
 
 }
-
-void invalidateFractal(HWND hWnd) {
+// Refresh bth sides and gradient
+inline void refreshScreen(HWND hWnd) {
 	refreshBoth(hWnd);
 	refreshGradient(hWnd);
 }
