@@ -80,6 +80,16 @@ public:
 		if (x < halfW) centerMandel = getComplexFromXY(x, y);
 		else centerJulia = getComplexFromXY(x, y);
 	}
+	inline void pan(int ox, int oy, int nx, int ny) {
+		ComplexNumber before = getComplexFromXY(ox, oy),
+			after = getComplexFromXY(nx, ny),
+			delta = before - after;
+
+		centerMandel += delta;
+		centerJulia += delta;
+	}
+
+
 	inline void setNewJuliaC(int x, int y) {
 		if (halfW >= x) {
 			juliaC = getComplexFromXY(x, y);

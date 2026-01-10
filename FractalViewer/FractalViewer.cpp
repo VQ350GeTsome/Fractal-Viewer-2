@@ -13,7 +13,7 @@
 #define MAX_LOADSTRING 100
 
 // Global Variables:
-int width = 1000, height = width / 2;
+int width = 250, height = width / 2;
 
 HINSTANCE hInst;                                // current instance
 WCHAR szTitle[MAX_LOADSTRING];                  // The title bar text
@@ -24,7 +24,13 @@ HBITMAP hFractalBmp = NULL;
 int* iterations = nullptr;
 uint32_t* pixels = nullptr;
 
+// Tracking the client area size
 int clientWidth = width, clientHeight = height;
+
+// For panning
+int lastPanX = 0;
+int lastPanY = 0;
+bool isPanning = false;
 
 // Forward declarations of functions included in this code module:
 inline void 		refreshJulia(HWND);
@@ -254,6 +260,17 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
 		break;
 
 		case WM_MOUSEMOVE: {
+
+			if (isPanning && (wParam & MK_MBUTTON)) {
+				POINT pt = scaleMouse(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
+
+				fractal->pan(lastPanX, lastPanY, pt.x, pt.y);  
+				refreshFractal(hWnd, pt.x);
+
+				lastPanX = pt.x;
+				lastPanY = pt.y;
+			}
+
 			if (wParam & MK_LBUTTON) {
 				POINT pt = scaleMouse(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
 				fractal->setNewJuliaC(pt.x, pt.y);
@@ -263,11 +280,17 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
 		}
 		break;
 
-		// Middle mouse button sets new center
 		case WM_MBUTTONDOWN: {
-			POINT pt = scaleMouse(hWnd, lParam);
-			fractal->setNewCenter(pt.x, pt.y);
-			refreshFractal(hWnd, pt.x);
+			POINT pt = scaleMouse(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
+			lastPanX = pt.x;
+			lastPanY = pt.y;
+			isPanning = true;
+		}
+		break;
+
+		// Middle mouse button sets new center
+		case WM_MBUTTONUP: {
+			isPanning = false;
 		}
 		break;
 
