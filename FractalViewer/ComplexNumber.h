@@ -3,70 +3,96 @@
 #include "Point.h"
 
 #include <cmath>
+#include <string>
 
+template<typename T>
 class ComplexNumber {
 
 public:
 
 	// Real and imaginary parts
-	double re, im;
+	T re, im;
 
-	ComplexNumber(double real = 0.0, double imag = 0.0);
+	ComplexNumber(T real = T{}, T imag = T{}) : re(real), im(imag) {}
 
 	// Operator overloads
 
 	// Addition
-	inline ComplexNumber operator+(const ComplexNumber& other) const {
-		return ComplexNumber(re + other.re, im + other.im);
-	}
+	inline ComplexNumber<T> operator+(const ComplexNumber<T>& other) const { return ComplexNumber<T>(re + other.re, im + other.im); }
 	// Addition assignment
-	inline ComplexNumber operator+=(const ComplexNumber& other) {
+	inline ComplexNumber<T> operator+=(const ComplexNumber<T>& other) {
 		re += other.re; im += other.im;
 		return *this;
 	}
 	// Subtraction
-	inline ComplexNumber operator-(const ComplexNumber& other) const {
-		return ComplexNumber(re - other.re, im - other.im);
-	}
+	inline ComplexNumber<T> operator-(const ComplexNumber<T>& other) const { return ComplexNumber<T>(re - other.re,
+																							im - other.im); }
 	// Subtraction assignment
-	inline ComplexNumber operator-=(const ComplexNumber& other) {
+	inline ComplexNumber<T> operator-=(const ComplexNumber<T>& other) {
 		re -= other.re; im -= other.im;
 		return *this;
 	}
 	// Multiplication
-	inline ComplexNumber operator*(const ComplexNumber& other) const {
-		return ComplexNumber(re * other.re - im * other.im, re * other.im + im * other.re);
+	inline ComplexNumber<T> operator*(const ComplexNumber<T>& other) const {
+		return ComplexNumber<T>(re * other.re - im * other.im,
+							 re * other.im + im * other.re);
 	}
 	// Multiplication assignment
-	inline ComplexNumber operator*=(const ComplexNumber& other) {
+	inline ComplexNumber<T> operator*=(const ComplexNumber<T>& other) {
 		double real = re * other.re - im * other.im;
 		im = re * other.im + im * other.re;
 		re = real;
 		return *this;
 	}
+	// Multiplication with scalar
+	inline ComplexNumber<T> operator*(double scalar) const { return ComplexNumber<T>(re * scalar, im * scalar); }
+	// Multiplication assignment with scalar
+	inline ComplexNumber<T> operator*=(double scalar) {
+		re *= scalar;
+		im *= scalar;
+		return *this;
+	}
 	// Division
-	inline ComplexNumber operator/(const ComplexNumber& other) const {
+	inline ComplexNumber<T> operator/(const ComplexNumber<T>& other) const {
 		double denom = other.re * other.re + other.im * other.im;
-		return ComplexNumber((re * other.re + im * other.im) / denom,
+		return ComplexNumber<T>((re * other.re + im * other.im) / denom,
 							 (im * other.re - re * other.im) / denom);
 	}
 	// Division assignment
-	inline ComplexNumber operator/=(const ComplexNumber& other) {
+	inline ComplexNumber<T> operator/=(const ComplexNumber<T>& other) {
 		double denom = other.re * other.re + other.im * other.im;
 		double real = (re * other.re + im * other.im) / denom;
 		im = (im * other.re - re * other.im) / denom;
 		re = real;
 		return *this;
 	}
+	// Division with scalar
+	inline ComplexNumber<T> operator/(double scalar) const { return ComplexNumber<T>(re / scalar, im / scalar); }
+	// Division assignment with scalar
+	inline ComplexNumber<T> operator/=(double scalar) {
+		re /= scalar;
+		im /= scalar;
+		return *this;
+	}
 	// Exponentiation ( De Moivre's theorem )
-	inline ComplexNumber operator^(double exponent) const { return pow(exponent); }
+	inline ComplexNumber<T> operator^(double exponent) const { return pow(exponent); }
+	// Equality check
+	inline bool operator==(const ComplexNumber<T>& other) const { return (re == other.re) && (im == other.im); }
+	// Inequality check
+	inline bool operator!=(const ComplexNumber<T>& other) const { return (re != other.re) || (im != other.im); }
 
 	// Polar coordinate conversions
 
 	// Converts this complex number to polar coordinates (r, theta)
-	Point toPolar() const;
+	inline Point toPolar() const {
+		double r = magnitude();
+		double theta = std::atan2(im, re);
+		return Point(r, theta);
+	}
 	// Returns a new complex number from polar coordinates (r, theta)
-	ComplexNumber fromPolar(double r, double theta) const;
+	ComplexNumber<T> fromPolar(double r, double theta) const {
+		return ComplexNumber<T>(r * std::cos(theta), r * std::sin(theta));
+	}
 
 	// Other methods
 
@@ -75,32 +101,50 @@ public:
 	// Calculates and returns the squared magnitude of the complex number
 	inline double magnitudeSquared() const { return re*re + im*im; }
 	// Returns a new complex number that is a blend between this one and another based on parameter t (0 <= t <= 1)
-	inline ComplexNumber blend(const ComplexNumber& other, double t) const {
-		return ComplexNumber(re * (1 - t) + other.re * t, im * (1 - t) + other.im * t);
+	inline ComplexNumber<T> blend(const ComplexNumber<T>& other, double t) const {
+		return ComplexNumber<T>(re * (1 - t) + other.re * t,
+							 im * (1 - t) + other.im * t);
 	}
 
 	// Exponentiation
 
 	// Returns a new complex number that is this one raised to the given exponent using De Moivre's theorem
-	ComplexNumber pow(double exponent) const;
+	ComplexNumber<T> pow(double exponent) const {
+		double r = magnitude();
+		double theta = std::atan2(im, re);
+		double newR = std::pow(r, exponent);
+		double newTheta = theta * exponent;
+		return ComplexNumber<T>(newR * std::cos(newTheta),
+								newR * std::sin(newTheta));
+	}
+
 	// Returns a new complex number that is this one squared
-	inline ComplexNumber square() const { return ComplexNumber(re * re - im * im, 2 * re * im); }
+	inline ComplexNumber<T> square() const { return ComplexNumber<T>(re * re - im * im, 2 * re * im); }
 
 	// Transformations
 
 	// Returns a new complex number that is this one scaled by a factor
-	inline ComplexNumber scale(double factor) const { return ComplexNumber(re * factor, im * factor); }
+	inline ComplexNumber<T> scale(double factor) const { return ComplexNumber<T>(re * factor, im * factor); }
 	// Returns a new complex number that is this one scaled by the inverse of a factor
-	inline ComplexNumber scaleInverse(double factor) const { return ComplexNumber(re / factor, im / factor); }
+	inline ComplexNumber<T> scaleInverse(double factor) const { return ComplexNumber<T>(re / factor, im / factor); }
 	// Returns a new complex number that is the negation of this one
-	inline ComplexNumber negate() const { return ComplexNumber(-re, -im); }
+	inline ComplexNumber<T> negate() const { return ComplexNumber<T>(-re, -im); }
 	// Returns a new complex number that is the conjugate of this one
-	inline ComplexNumber conjugate() const { return ComplexNumber(re, -im); }
+	inline ComplexNumber<T> conjugate() const { return ComplexNumber<T>(re, -im); }
 	// Returns a new complex number that is the reciprocal of this one
-	inline ComplexNumber reciprocal() const {
+	inline ComplexNumber<T> reciprocal() const {
 		double denom = re * re + im * im;
-		return ComplexNumber(re / denom, -im / denom);
+		return ComplexNumber<T>(re / denom, -im / denom);
+	}
+
+	std::string toString() {
+		return "(" + std::to_string(roundTo(re, 8)) + ", " + std::to_string(roundTo(im, 8)) + "i)";
+	}
+
+private:
+	inline double roundTo(float value, int places) {
+		double factor = std::pow(10.0f, places);
+		return std::round(value * factor) / factor;
 	}
 	
 };
-

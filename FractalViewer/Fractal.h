@@ -1,5 +1,7 @@
 #pragma once
 
+#include <string>
+
 #include <functional>	// For lambda function
 #include <windows.h>	// For COLORREF
 #include <cstdlib> 
@@ -9,22 +11,23 @@
 #include "Point.h"
 #include "Gradient.h"
 
+template<typename T>
 class Fractal {
-
+	
 public:
 
-	Fractal(int width, int height, std::function<ComplexNumber(ComplexNumber, ComplexNumber)> func) : fractalFunction(func) {
+	Fractal(int width, int height, std::function<ComplexNumber<T>(ComplexNumber<T>, ComplexNumber<T>)> func) : fractalFunction(func) {
 
 		// Seed random
 		std::srand(static_cast<unsigned int>(std::time(nullptr)));
 
-		ComplexNumber goodJulias[] = {
-			ComplexNumber(-0.4, 0.6),
-			ComplexNumber(0.285, 0.0),
-			ComplexNumber(-0.70176, -0.3842),
-			ComplexNumber(-0.835, -0.2321),
-			ComplexNumber(-0.8, 0.156),
-			ComplexNumber(0.355, 0.355)
+		ComplexNumber<T> goodJulias[] = {
+			ComplexNumber<T>(-0.4, 0.6),
+			ComplexNumber<T>(0.285, 0.0),
+			ComplexNumber<T>(-0.70176, -0.3842),
+			ComplexNumber<T>(-0.835, -0.2321),
+			ComplexNumber<T>(-0.8, 0.156),
+			ComplexNumber<T>(0.355, 0.355)
 		};
 
 		int idx = std::rand() % 6;
@@ -34,7 +37,21 @@ public:
 		gradient.setInsideColor(insideColor, maxIterations);
 	}
 
-	int computePixel(int x, int y);
+	int computePixel(int x, int y) {
+
+		ComplexNumber<T> z, c;
+
+		if (halfW > x) {
+			z = ComplexNumber<T>(0.0, 0.0);
+			c = getComplexFromXY(x, y);
+		}
+		else {
+			z = getComplexFromXY(x, y);
+			c = juliaC;
+		}
+
+		return iterate(z, c);
+	}
 
 	inline void setNewDimensions(int width, int height) {
 		w = width; h = height;
@@ -59,13 +76,13 @@ public:
 		bool mandel = (halfW > x);
 
 		// Complex of mouse before zoom
-		ComplexNumber before = getComplexFromXY(x, y);
+		ComplexNumber<T> before = getComplexFromXY(x, y);
 
 		// Apply zoom
 		if (mandel) zoomM *= delta; else zoomJ *= delta;
 
 		// Complex of mouse after zoom
-		ComplexNumber after = getComplexFromXY(x, y);
+		ComplexNumber<T> after = getComplexFromXY(x, y);
 
 		// Adjust center to keep point under mouse the same
 		if (mandel) centerMandel += (before - after);
@@ -81,25 +98,79 @@ public:
 		else centerJulia = getComplexFromXY(x, y);
 	}
 	inline void pan(int ox, int oy, int nx, int ny) {
-		ComplexNumber before = getComplexFromXY(ox, oy),
+		ComplexNumber<T> before = getComplexFromXY(ox, oy),
 			after = getComplexFromXY(nx, ny),
 			delta = before - after;
 
-		centerMandel += delta;
-		centerJulia += delta;
+		if (halfW > ox) centerMandel += delta;
+		else centerJulia += delta;
 	}
 
+	std::string toString(int x, int y) {
+		ComplexNumber<T> mouse = getComplexFromXY(x, y);
+
+		std::string side = (halfW > x) ? "Mandel" : "Julia";
+
+		return std::string
+		(
+			"Side: " + side + "\n" +
+			"Complex: " + mouse.toString() + "\n" +
+			"Zoom: " + std::to_string((halfW > x) ? 1 / zoomM : 1 / zoomJ) + "\n"
+		);
+	}
 
 	inline void setNewJuliaC(int x, int y) {
-		if (halfW >= x) {
-			juliaC = getComplexFromXY(x, y);
-		}
+		if (halfW >= x) juliaC = getComplexFromXY(x, y);
+		
 	}
 
 	inline uint32_t applyGradient(int iterations) { return gradient.getColor(iterations); }
 
-	ComplexNumber getComplexFromXY(int x, int y);
-	Point getXYFromComplex(ComplexNumber cl, bool mandelSide);
+	ComplexNumber<T> getComplexFromXY(int x, int y) {
+
+		bool leftSide = (x < halfW);
+
+		double nx = leftSide ? (double)x / halfW : (double)(x - halfW) / halfW;
+
+		double ny = (double)y / h;
+
+		ComplexNumber<T> center = leftSide ? centerMandel : centerJulia;
+		double zoom = leftSide ? zoomM : zoomJ;
+
+		double viewWidth = zoom * 3;
+		double viewHeight = viewWidth * aspectRatio * 2;
+
+		double realMin = center.re - viewWidth / 2;
+		double realMax = center.re + viewWidth / 2;
+		double imagMin = center.im - viewHeight / 2;
+		double imagMax = center.im + viewHeight / 2;
+
+		double real = realMin + nx * (realMax - realMin);
+		double imag = imagMax - ny * (imagMax - imagMin);
+
+		return ComplexNumber<T>(real, imag);
+	}
+	Point getXYFromComplex(ComplexNumber<T> c, bool mandelSide) {
+
+		ComplexNumber<T> center = mandelSide ? centerMandel : centerJulia;
+		double zoom = mandelSide ? zoomM : zoomJ;
+
+		double viewWidth = zoom * 3;
+		double viewHeight = viewWidth * aspectRatio * 2;
+
+		double realMin = center.re - viewWidth / 2;
+		double realMax = center.re + viewWidth / 2;
+		double imagMin = center.im - viewHeight / 2;
+		double imagMax = center.im + viewHeight / 2;
+
+		double nx = (c.re - realMin) / (realMax - realMin);
+		double ny = (imagMax - c.im) / (imagMax - imagMin);
+
+		int x = mandelSide ? (int)(nx * halfW) : (int)(nx * halfW + halfW),
+			y = (int)(ny * h);
+
+		return Point(x, y);
+	}
 
 private:
 
@@ -107,19 +178,26 @@ private:
 	double aspectRatio;
 
 	int maxIterations = 256;
-	double zoomM = 0.9, zoomJ = 0.9;
+	long double zoomM = 0.9, zoomJ = 0.9;
 
 	uint32_t insideColor = 0x000000;
 
 	Gradient gradient = Gradient();
 
-	ComplexNumber juliaC = NULL;
+	ComplexNumber<T> juliaC = NULL;
 	
-	ComplexNumber centerMandel = ComplexNumber(-0.5, 0.0), centerJulia = ComplexNumber(0.0, 0.0);
+	ComplexNumber<T> centerMandel = ComplexNumber<T>(-0.6, 0.0), centerJulia = ComplexNumber<T>(0.0, 0.0);
 
-	std::function<ComplexNumber(ComplexNumber, ComplexNumber)> fractalFunction;
+	std::function<ComplexNumber<T>(ComplexNumber<T>, ComplexNumber<T>)> fractalFunction;
 
-	int iterate(ComplexNumber z, ComplexNumber c);
+	int iterate(ComplexNumber<T> z, ComplexNumber<T> c) {
+		int iterations = 0;
+		while (4 >= z.magnitudeSquared() && maxIterations > iterations) {
+			z = fractalFunction(z, c);
+			iterations++;
+		}
+		return iterations;
+	}
 
 };
 
