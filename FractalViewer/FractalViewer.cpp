@@ -10,6 +10,7 @@
 
 #include "Fractal.h"
 #include "ComplexNumber.h"
+#include "PrefabFractals.h"
 
 #define MAX_LOADSTRING 100
 
@@ -20,7 +21,9 @@ HINSTANCE hInst;                                // current instance
 WCHAR szTitle[MAX_LOADSTRING];                  // The title bar text
 WCHAR szWindowClass[MAX_LOADSTRING];            // the main window class name
 
-Fractal<long double>* fractal = new Fractal<long double>(width, height, [](ComplexNumber<long double> z, ComplexNumber<long double> c) { return z*z + c; });	// Mandelbrot set
+// Our fractal
+Fractal<long double>* fractal = new Fractal<long double>(width, height, fractals.MANDELBROT);
+
 HBITMAP hFractalBmp = NULL;
 int* iterations = nullptr;
 uint32_t* pixels = nullptr;
@@ -32,6 +35,9 @@ int clientWidth = width, clientHeight = height;
 int lastPanX = 0;
 int lastPanY = 0;
 bool isPanning = false;
+
+// Control Settings
+bool holdlessJulia = false;
 
 // Forward declarations of functions included in this code module:
 inline void 		refreshJulia(HWND);
@@ -282,7 +288,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
 				lastPanY = pt.y;
 			}
 
-			if (wParam & MK_LBUTTON) {
+			if ((wParam & MK_LBUTTON) || holdlessJulia) {
 				POINT pt = scaleMouse(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
 				fractal->setNewJuliaC(pt.x, pt.y);
 				refreshJulia(hWnd);

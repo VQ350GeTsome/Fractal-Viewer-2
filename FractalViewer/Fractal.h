@@ -115,7 +115,8 @@ public:
 		(
 			"Side: " + side + "\n" +
 			"Complex: " + mouse.toString() + "\n" +
-			"Zoom: " + std::to_string((halfW > x) ? 1 / zoomM : 1 / zoomJ) + "\n"
+			"Zoom: " + std::to_string((halfW > x) ? (1.0 / zoomM) : (1.0 / zoomJ)) + "\n"
+			"Width: " + std::to_string((halfW > x) ? zoomM : zoomJ) + "\n"
 		);
 	}
 
@@ -137,7 +138,7 @@ public:
 		ComplexNumber<T> center = leftSide ? centerMandel : centerJulia;
 		double zoom = leftSide ? zoomM : zoomJ;
 
-		double viewWidth = zoom * 3;
+		double viewWidth = zoom;
 		double viewHeight = viewWidth * aspectRatio * 2;
 
 		double realMin = center.re - viewWidth / 2;
@@ -155,7 +156,7 @@ public:
 		ComplexNumber<T> center = mandelSide ? centerMandel : centerJulia;
 		double zoom = mandelSide ? zoomM : zoomJ;
 
-		double viewWidth = zoom * 3;
+		double viewWidth = zoom;
 		double viewHeight = viewWidth * aspectRatio * 2;
 
 		double realMin = center.re - viewWidth / 2;
@@ -178,7 +179,7 @@ private:
 	double aspectRatio;
 
 	int maxIterations = 256;
-	long double zoomM = 0.9, zoomJ = 0.9;
+	long double zoomM = 3.0, zoomJ = 3.5;
 
 	uint32_t insideColor = 0x000000;
 

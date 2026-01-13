@@ -105,7 +105,20 @@ public:
 		return ComplexNumber<T>(re * (1 - t) + other.re * t,
 							 im * (1 - t) + other.im * t);
 	}
-
+	// Returns the angle (argument) of the complex number in radians
+	inline double angle() const { return std::atan2(im, re); }
+	// Returns the distance between this complex number and another
+	inline double distanceTo(const ComplexNumber<T>& other) const {
+		double deltaRe = re - other.re;
+		double deltaIm = im - other.im;
+		return std::sqrt(deltaRe * deltaRe + deltaIm * deltaIm);
+	}
+	// Returns the squared distance between this complex number and another
+	inline double distanceSquaredTo(const ComplexNumber<T>& other) const {
+		double deltaRe = re - other.re;
+		double deltaIm = im - other.im;
+		return deltaRe * deltaRe + deltaIm * deltaIm;
+	}
 	// Exponentiation
 
 	// Returns a new complex number that is this one raised to the given exponent using De Moivre's theorem
@@ -136,7 +149,19 @@ public:
 		double denom = re * re + im * im;
 		return ComplexNumber<T>(re / denom, -im / denom);
 	}
+	// Returns a new complex number that is this one normalized to magnitude 1
+	inline ComplexNumber<T> normalize() const {
+		double mag = magnitude();
+		if (mag == 0) return ComplexNumber<T>(0, 0);
+		return ComplexNumber<T>(re / mag, im / mag);
+	}
+	// Returns a new complex number that is this but its components are swapped
+	inline ComplexNumber<T> swap() const { return ComplexNumber<T>(im, re); }
+	// Returns a new complex number that is this but its components are absolute values
+	inline ComplexNumber<T> abs() const { return ComplexNumber<T>(std::abs(re), std::abs(im)); }
 
+
+	// String representation
 	std::string toString() {
 		return "(" + std::to_string(roundTo(re, 8)) + ", " + std::to_string(roundTo(im, 8)) + "i)";
 	}
