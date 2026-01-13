@@ -22,7 +22,7 @@ WCHAR szTitle[MAX_LOADSTRING];                  // The title bar text
 WCHAR szWindowClass[MAX_LOADSTRING];            // the main window class name
 
 // Our fractal
-Fractal<long double>* fractal = new Fractal<long double>(width, height, fractals.MANDELBROT);
+Fractal<long double>* fractal = new Fractal<long double>(width, height, fractals.CUSTOM);
 
 HBITMAP hFractalBmp = NULL;
 int* iterations = nullptr;
@@ -251,8 +251,10 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
 
 				// R refreshes the fractal
 				case 'R': {
+					fractal->reset();
 					refreshScreen(hWnd);
 				}
+				break;
 				case 'I': {
 					// Get Mouse position
 					POINT pt;
@@ -263,6 +265,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
 					std::string info = fractal->toString(pt.x, pt.y);
 					MessageBoxA(hWnd, info.c_str(), "Fractal Info", MB_OK);
 				}
+				break;
 			}
 		}
 		break;

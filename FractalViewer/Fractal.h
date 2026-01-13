@@ -12,11 +12,14 @@
 #include "Gradient.h"
 
 template<typename T>
+using fractalFunc = std::function<ComplexNumber<T>(ComplexNumber<T>, ComplexNumber<T>)>;
+
+template<typename T>
 class Fractal {
 	
 public:
 
-	Fractal(int width, int height, std::function<ComplexNumber<T>(ComplexNumber<T>, ComplexNumber<T>)> func) : fractalFunction(func) {
+	Fractal(int width, int height, fractalFunc<T> func) : fractalFunction(func) {
 
 		// Seed random
 		std::srand(static_cast<unsigned int>(std::time(nullptr)));
@@ -58,7 +61,6 @@ public:
 		halfW = w / 2;
 		aspectRatio = (double) h / w;
 	}
-
 	inline void setNewIterations(int iterations) {
 		maxIterations = iterations;
 		setInsideColor(insideColor);
@@ -67,6 +69,13 @@ public:
 		insideColor = color;
 		gradient.setInsideColor(insideColor, maxIterations);
 	}
+	inline void setNewCenter(int x, int y) {
+		if (x < halfW) centerMandel = getComplexFromXY(x, y);
+		else centerJulia = getComplexFromXY(x, y);
+	}
+	inline void setNewJuliaC(int x, int y) { if (halfW >= x) juliaC = getComplexFromXY(x, y); }
+	inline void setNewGradient(Gradient g) { gradient = g; }
+	inline void setNewFractal(fractalFunc<T> func) { fractalFunction = func; }
 
 	inline void zoomInOut(int x, int y, double delta) {
 		// If no zoom return
@@ -93,10 +102,6 @@ public:
 		gradient.changeGradientSize(delta);
 	}
 
-	inline void setNewCenter(int x, int y) {
-		if (x < halfW) centerMandel = getComplexFromXY(x, y);
-		else centerJulia = getComplexFromXY(x, y);
-	}
 	inline void pan(int ox, int oy, int nx, int ny) {
 		ComplexNumber<T> before = getComplexFromXY(ox, oy),
 			after = getComplexFromXY(nx, ny),
@@ -104,6 +109,13 @@ public:
 
 		if (halfW > ox) centerMandel += delta;
 		else centerJulia += delta;
+	}
+
+	inline void reset() {
+		centerMandel = ComplexNumber<T>(-0.6, 0.0);
+		centerJulia = ComplexNumber<T>();
+		zoomM = 4.0;
+		zoomJ = 3.5;
 	}
 
 	std::string toString(int x, int y) {
@@ -118,11 +130,6 @@ public:
 			"Zoom: " + std::to_string((halfW > x) ? (1.0 / zoomM) : (1.0 / zoomJ)) + "\n"
 			"Width: " + std::to_string((halfW > x) ? zoomM : zoomJ) + "\n"
 		);
-	}
-
-	inline void setNewJuliaC(int x, int y) {
-		if (halfW >= x) juliaC = getComplexFromXY(x, y);
-		
 	}
 
 	inline uint32_t applyGradient(int iterations) { return gradient.getColor(iterations); }
@@ -179,7 +186,7 @@ private:
 	double aspectRatio;
 
 	int maxIterations = 256;
-	long double zoomM = 3.0, zoomJ = 3.5;
+	long double zoomM = 4.0, zoomJ = 4.0;
 
 	uint32_t insideColor = 0x000000;
 
@@ -187,9 +194,9 @@ private:
 
 	ComplexNumber<T> juliaC = NULL;
 	
-	ComplexNumber<T> centerMandel = ComplexNumber<T>(-0.6, 0.0), centerJulia = ComplexNumber<T>(0.0, 0.0);
+	ComplexNumber<T> centerMandel = ComplexNumber<T>(), centerJulia = ComplexNumber<T>();
 
-	std::function<ComplexNumber<T>(ComplexNumber<T>, ComplexNumber<T>)> fractalFunction;
+	fractalFunc<T> fractalFunction;
 
 	int iterate(ComplexNumber<T> z, ComplexNumber<T> c) {
 		int iterations = 0;
